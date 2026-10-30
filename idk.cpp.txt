@@ -1,0 +1,996 @@
+//------------------Sum of squares and count of negative numbers
+
+#include <stdio.h>
+#include <omp.h>
+
+int main() {
+
+    int n, threads;
+
+    printf("Enter array size: ");
+    scanf("%d", &n);
+
+    int a[n];
+
+    printf("Enter array elements:\n");
+    for (int i = 0; i < n; i++) {
+        scanf("%d", &a[i]);
+    }
+
+    printf("Enter number of threads: ");
+    scanf("%d", &threads);
+
+    // --------------------------------
+    // 1. Serial calculation
+    // --------------------------------
+
+    long long serial_sum = 0;
+    int serial_negative = 0;
+
+    double start = omp_get_wtime();
+
+    for (int i = 0; i < n; i++) {
+
+        serial_sum += (long long)a[i] * a[i];
+
+        if (a[i] < 0) {
+            serial_negative++;
+        }
+    }
+
+    double serial_time = omp_get_wtime() - start;
+
+    // --------------------------------
+    // 2. Parallel calculation
+    // --------------------------------
+
+    long long parallel_sum = 0;
+    int parallel_negative = 0;
+
+    omp_set_num_threads(threads);
+
+    start = omp_get_wtime();
+
+    #pragma omp parallel for reduction(+:parallel_sum, parallel_negative)
+    for (int i = 0; i < n; i++) {
+
+        parallel_sum += (long long)a[i] * a[i];
+
+        if (a[i] < 0) {
+            parallel_negative++;
+        }
+    }
+
+    double parallel_time = omp_get_wtime() - start;
+
+    // --------------------------------
+    // 3. Display results
+    // --------------------------------
+
+    printf("\n--- Serial Results ---\n");
+    printf("Sum of squares: %lld\n", serial_sum);
+    printf("Negative count: %d\n", serial_negative);
+    printf("Time: %f seconds\n", serial_time);
+
+    printf("\n--- Parallel Results ---\n");
+    printf("Sum of squares: %lld\n", parallel_sum);
+    printf("Negative count: %d\n", parallel_negative);
+    printf("Time: %f seconds\n", parallel_time);
+
+    // --------------------------------
+    // 4. Verification
+    // --------------------------------
+
+    if (serial_sum == parallel_sum &&
+        serial_negative == parallel_negative) {
+        printf("\nCorrectness: YES\n");
+    } else {
+        printf("\nCorrectness: NO\n");
+    }
+
+    // --------------------------------
+    // 5. Speedup
+    // --------------------------------
+
+    if (parallel_time > 0) {
+        printf("Speedup: %f\n",
+               serial_time / parallel_time);
+    }
+
+    return 0;
+}
+//----------------Count frequency of characters in a string
+
+#include <stdio.h>
+#include <string.h>
+#include <omp.h>
+
+int main() {
+
+    char str[100000];
+    int threads;
+
+    printf("Enter a string: ");
+    fgets(str, sizeof(str), stdin);
+
+    // Remove newline character
+    str[strcspn(str, "\n")] = '\0';
+
+    int n = strlen(str);
+
+    printf("Enter number of threads: ");
+    scanf("%d", &threads);
+
+    int serial_freq[256] = {0};
+    int parallel_freq[256] = {0};
+
+    // --------------------------------
+    // 1. Serial character counting
+    // --------------------------------
+
+    double start = omp_get_wtime();
+
+    for (int i = 0; i < n; i++) {
+        unsigned char ch = str[i];
+        serial_freq[ch]++;
+    }
+
+    double serial_time = omp_get_wtime() - start;
+
+    // --------------------------------
+    // 2. Parallel character counting
+    // --------------------------------
+
+    omp_set_num_threads(threads);
+
+    start = omp_get_wtime();
+
+    #pragma omp parallel for
+    for (int i = 0; i < n; i++) {
+
+        unsigned char ch = str[i];
+
+        #pragma omp atomic
+        parallel_freq[ch]++;
+    }
+
+    double parallel_time = omp_get_wtime() - start;
+
+    // --------------------------------
+    // 3. Display character frequencies
+    // --------------------------------
+
+    printf("\n--- Character Frequencies ---\n");
+
+    for (int i = 0; i < 256; i++) {
+
+        if (serial_freq[i] > 0) {
+
+            if (i == ' ')
+                printf("Space = ");
+            else
+                printf("%c = ", i);
+
+            printf("%d\n", serial_freq[i]);
+        }
+    }
+
+    // --------------------------------
+    // 4. Verify results
+    // --------------------------------
+
+    int correct = 1;
+
+    for (int i = 0; i < 256; i++) {
+        if (serial_freq[i] != parallel_freq[i]) {
+            correct = 0;
+            break;
+        }
+    }
+
+    printf("\nCorrectness: %s\n",
+           correct ? "YES" : "NO");
+
+    // --------------------------------
+    // 5. Execution times
+    // --------------------------------
+
+    printf("\nSerial Time: %f seconds\n", serial_time);
+
+    printf("Parallel Time: %f seconds\n", parallel_time);
+
+    if (parallel_time > 0) {
+        printf("Speedup: %f\n",
+               serial_time / parallel_time);
+    }
+
+    return 0;
+}
+//----------------second 
+
+#include <stdio.h>
+#include <omp.h>
+#include <limits.h>
+
+int main() {
+
+    int n, threads;
+
+    printf("Enter array size: ");
+    scanf("%d", &n);
+
+    if (n < 2) {
+        printf("Array must contain at least 2 elements.\n");
+        return 0;
+    }
+
+    int a[n];
+
+    printf("Enter array elements:\n");
+    for (int i = 0; i < n; i++) {
+        scanf("%d", &a[i]);
+    }
+
+    printf("Enter number of threads: ");
+    scanf("%d", &threads);
+
+    if (threads < 1) {
+        printf("Invalid number of threads.\n");
+        return 0;
+    }
+
+    // --------------------------------
+    // 1. Serial calculation
+    // --------------------------------
+
+    int serial_min = INT_MAX;
+    int serial_second = INT_MAX;
+    int serial_idx = -1;
+
+    double start = omp_get_wtime();
+
+    for (int i = 0; i < n; i++) {
+
+        if (a[i] < serial_min) {
+            serial_second = serial_min;
+            serial_min = a[i];
+        }
+        else if (a[i] < serial_second && a[i] != serial_min) {
+            serial_second = a[i];
+        }
+    }
+
+    // Find index of second-smallest
+    for (int i = 0; i < n; i++) {
+        if (a[i] == serial_second) {
+            serial_idx = i;
+            break;
+        }
+    }
+
+    double serial_time = omp_get_wtime() - start;
+
+    // --------------------------------
+    // 2. Parallel calculation
+    // --------------------------------
+
+    omp_set_dynamic(0);
+    omp_set_num_threads(threads);
+
+    int actual_threads = 0;
+
+    int local_min[threads];
+    int local_second[threads];
+
+    for (int t = 0; t < threads; t++) {
+        local_min[t] = INT_MAX;
+        local_second[t] = INT_MAX;
+    }
+
+    start = omp_get_wtime();
+
+    #pragma omp parallel
+    {
+        int tid = omp_get_thread_num();
+
+        #pragma omp single
+        actual_threads = omp_get_num_threads();
+
+        int first = INT_MAX;
+        int second = INT_MAX;
+
+        #pragma omp for
+        for (int i = 0; i < n; i++) {
+
+            if (a[i] < first) {
+                second = first;
+                first = a[i];
+            }
+            else if (a[i] < second && a[i] != first) {
+                second = a[i];
+            }
+        }
+
+        local_min[tid] = first;
+        local_second[tid] = second;
+    }
+
+    // Combine thread results
+    int global_min = INT_MAX;
+    int global_second = INT_MAX;
+
+    for (int t = 0; t < actual_threads; t++) {
+
+        if (local_min[t] < global_min) {
+            global_min = local_min[t];
+        }
+    }
+
+    // Consider each thread's two smallest values
+    for (int t = 0; t < actual_threads; t++) {
+
+        if (local_min[t] > global_min &&
+            local_min[t] < global_second) {
+            global_second = local_min[t];
+        }
+
+        if (local_second[t] > global_min &&
+            local_second[t] < global_second) {
+            global_second = local_second[t];
+        }
+    }
+
+    int parallel_idx = -1;
+
+    for (int i = 0; i < n; i++) {
+        if (a[i] == global_second) {
+            parallel_idx = i;
+            break;
+        }
+    }
+
+    double parallel_time = omp_get_wtime() - start;
+
+    // --------------------------------
+    // 3. Display results
+    // --------------------------------
+
+    printf("\n--- Serial Result ---\n");
+    printf("Smallest: %d\n", serial_min);
+    printf("Second smallest: %d\n", serial_second);
+    printf("Index: %d\n", serial_idx);
+
+    printf("\n--- Parallel Result ---\n");
+    printf("Smallest: %d\n", global_min);
+    printf("Second smallest: %d\n", global_second);
+    printf("Index: %d\n", parallel_idx);
+
+    // --------------------------------
+    // 4. Verification
+    // --------------------------------
+
+    int correct = (serial_second == global_second &&
+                   serial_idx == parallel_idx);
+
+    printf("\nCorrectness: %s\n", correct ? "YES" : "NO");
+
+    printf("Serial time: %f seconds\n", serial_time);
+    printf("Parallel time: %f seconds\n", parallel_time);
+
+    if (parallel_time > 0) {
+        printf("Speedup: %f\n", serial_time / parallel_time);
+    }
+
+    return 0;
+}
+//------------Calculate row sums and column sums
+
+#include <stdio.h>
+#include <omp.h>
+
+int main() {
+    int rows, cols, threads;
+
+    printf("Enter number of rows: ");
+    scanf("%d", &rows);
+
+    printf("Enter number of columns: ");
+    scanf("%d", &cols);
+
+    int a[rows][cols];
+
+    printf("Enter matrix elements:\n");
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            scanf("%d", &a[i][j]);
+        }
+    }
+
+    printf("Enter number of threads: ");
+    scanf("%d", &threads);
+
+    omp_set_dynamic(0);
+    omp_set_num_threads(threads);
+
+    long long serial_row[rows] = {0};
+    long long serial_col[cols] = {0};
+    long long parallel_row[rows] = {0};
+    long long parallel_col[cols] = {0};
+
+    long long serial_total = 0;
+    long long parallel_total = 0;
+
+    // SERIAL EXECUTION
+    double start = omp_get_wtime();
+
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            serial_row[i] += a[i][j];
+            serial_col[j] += a[i][j];
+            serial_total += a[i][j];
+        }
+    }
+
+    double serial_time = omp_get_wtime() - start;
+
+    // PARALLEL EXECUTION
+    start = omp_get_wtime();
+
+    // Calculate row sums
+    #pragma omp parallel for
+    for (int i = 0; i < rows; i++) {
+        long long sum = 0;
+
+        for (int j = 0; j < cols; j++) {
+            sum += a[i][j];
+        }
+
+        parallel_row[i] = sum;
+    }
+
+    // Calculate column sums
+    #pragma omp parallel for
+    for (int j = 0; j < cols; j++) {
+        long long sum = 0;
+
+        for (int i = 0; i < rows; i++) {
+            sum += a[i][j];
+        }
+
+        parallel_col[j] = sum;
+    }
+
+    // Calculate total sum using collapse and reduction
+    #pragma omp parallel for collapse(2) reduction(+:parallel_total)
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            parallel_total += a[i][j];
+        }
+    }
+
+    double parallel_time = omp_get_wtime() - start;
+
+    // DISPLAY RESULTS
+    printf("\n--- SERIAL RESULTS ---\n");
+
+    printf("Row sums: ");
+    for (int i = 0; i < rows; i++)
+        printf("%lld ", serial_row[i]);
+
+    printf("\nColumn sums: ");
+    for (int j = 0; j < cols; j++)
+        printf("%lld ", serial_col[j]);
+
+    printf("\nTotal sum: %lld\n", serial_total);
+
+    printf("\n--- PARALLEL RESULTS ---\n");
+
+    printf("Row sums: ");
+    for (int i = 0; i < rows; i++)
+        printf("%lld ", parallel_row[i]);
+
+    printf("\nColumn sums: ");
+    for (int j = 0; j < cols; j++)
+        printf("%lld ", parallel_col[j]);
+
+    printf("\nTotal sum: %lld\n", parallel_total);
+
+    // CHECK CORRECTNESS
+    int correct = (serial_total == parallel_total);
+
+    for (int i = 0; i < rows; i++) {
+        if (serial_row[i] != parallel_row[i])
+            correct = 0;
+    }
+
+    for (int j = 0; j < cols; j++) {
+        if (serial_col[j] != parallel_col[j])
+            correct = 0;
+    }
+
+    printf("\nCorrectness: %s\n", correct ? "YES" : "NO");
+
+    printf("Serial time: %f seconds\n", serial_time);
+    printf("Parallel time: %f seconds\n", parallel_time);
+
+    if (parallel_time > 0)
+        printf("Speedup: %f\n", serial_time / parallel_time);
+
+    return 0;
+}
+//-------------
+
+#include <stdio.h>
+#include <omp.h>
+
+int main() {
+    int n, threads;
+    double initial_balance;
+
+    printf("Enter initial bank balance: ");
+    scanf("%lf", &initial_balance);
+
+    printf("Enter number of transactions: ");
+    scanf("%d", &n);
+
+    char type[n];
+    double amount[n];
+
+    printf("\nEnter transactions:\n");
+    printf("D = Deposit, W = Withdraw\n");
+
+    for (int i = 0; i < n; i++) {
+        printf("Transaction %d: ", i + 1);
+        scanf(" %c %lf", &type[i], &amount[i]);
+    }
+
+    printf("Enter number of threads: ");
+    scanf("%d", &threads);
+
+    omp_set_dynamic(0);
+    omp_set_num_threads(threads);
+
+    double serial_balance = initial_balance;
+    double parallel_balance = initial_balance;
+
+    // SERIAL EXECUTION
+    double start = omp_get_wtime();
+
+    for (int i = 0; i < n; i++) {
+        if (type[i] == 'D' || type[i] == 'd') {
+            serial_balance += amount[i];
+        }
+        else if (type[i] == 'W' || type[i] == 'w') {
+            serial_balance -= amount[i];
+        }
+    }
+
+    double serial_time = omp_get_wtime() - start;
+
+    // PARALLEL EXECUTION
+    start = omp_get_wtime();
+
+    #pragma omp parallel for
+    for (int i = 0; i < n; i++) {
+
+        #pragma omp critical
+        {
+            if (type[i] == 'D' || type[i] == 'd') {
+                parallel_balance += amount[i];
+            }
+            else if (type[i] == 'W' || type[i] == 'w') {
+                parallel_balance -= amount[i];
+            }
+        }
+    }
+
+    double parallel_time = omp_get_wtime() - start;
+
+    // RESULTS
+    printf("\n--- RESULTS ---\n");
+
+    printf("Serial final balance: %.2lf\n", serial_balance);
+    printf("Parallel final balance: %.2lf\n", parallel_balance);
+
+    printf("Correctness: %s\n",
+           (serial_balance == parallel_balance) ? "YES" : "NO");
+
+    printf("Serial time: %f seconds\n", serial_time);
+    printf("Parallel time: %f seconds\n", parallel_time);
+
+    if (parallel_time > 0)
+        printf("Speedup: %f\n", serial_time / parallel_time);
+
+    return 0;
+}
+//--------------------------prime number counting
+
+#include <stdio.h>
+#include <omp.h>
+
+// Function to check prime number
+int is_prime(int num) {
+
+    if (num < 2)
+        return 0;
+
+    for (int i = 2; i <= num / i; i++) {
+        if (num % i == 0)
+            return 0;
+    }
+
+    return 1;
+}
+
+int main() {
+
+    int n, threads;
+
+    printf("Enter array size: ");
+    scanf("%d", &n);
+
+    int a[n];
+
+    printf("Enter array elements:\n");
+
+    for (int i = 0; i < n; i++) {
+        scanf("%d", &a[i]);
+    }
+
+    printf("Enter number of threads: ");
+    scanf("%d", &threads);
+
+    omp_set_dynamic(0);
+    omp_set_num_threads(threads);
+
+    int serial_count = 0;
+    int parallel_count = 0;
+
+    // SERIAL EXECUTION
+    double start = omp_get_wtime();
+
+    for (int i = 0; i < n; i++) {
+        if (is_prime(a[i])) {
+            serial_count++;
+        }
+    }
+
+    double serial_time = omp_get_wtime() - start;
+
+    // PARALLEL EXECUTION
+    start = omp_get_wtime();
+
+    #pragma omp parallel for reduction(+:parallel_count)
+    for (int i = 0; i < n; i++) {
+
+        if (is_prime(a[i])) {
+            parallel_count++;
+        }
+    }
+
+    double parallel_time = omp_get_wtime() - start;
+
+    // RESULTS
+    printf("\n--- RESULTS ---\n");
+
+    printf("Serial prime count: %d\n", serial_count);
+    printf("Parallel prime count: %d\n", parallel_count);
+
+    printf("Correctness: %s\n",
+           (serial_count == parallel_count) ? "YES" : "NO");
+
+    printf("Serial time: %f seconds\n", serial_time);
+    printf("Parallel time: %f seconds\n", parallel_time);
+
+    if (parallel_time > 0)
+        printf("Speedup: %f\n", serial_time / parallel_time);
+
+    return 0;
+}
+//------------------------boundary sum of a matrix
+
+#include <stdio.h>
+#include <omp.h>
+
+int main() {
+
+    int rows, cols, threads;
+
+    printf("Enter number of rows: ");
+    scanf("%d", &rows);
+
+    printf("Enter number of columns: ");
+    scanf("%d", &cols);
+
+    int a[rows][cols];
+
+    printf("Enter matrix elements:\n");
+
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            scanf("%d", &a[i][j]);
+        }
+    }
+
+    printf("Enter number of threads: ");
+    scanf("%d", &threads);
+
+    omp_set_dynamic(0);
+    omp_set_num_threads(threads);
+
+    long long serial_sum = 0;
+    long long parallel_sum = 0;
+
+    // SERIAL EXECUTION
+    double start = omp_get_wtime();
+
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+
+            if (i == 0 || i == rows-1 ||
+                j == 0 || j == cols-1) {
+
+                serial_sum += a[i][j];
+            }
+        }
+    }
+
+    double serial_time = omp_get_wtime() - start;
+
+    // PARALLEL EXECUTION
+    start = omp_get_wtime();
+
+    #pragma omp parallel for collapse(2) reduction(+:parallel_sum)
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+
+            if (i == 0 || i == rows-1 ||
+                j == 0 || j == cols-1) {
+
+                parallel_sum += a[i][j];
+            }
+        }
+    }
+
+    double parallel_time = omp_get_wtime() - start;
+
+    // RESULTS
+    printf("\n--- RESULTS ---\n");
+
+    printf("Serial boundary sum: %lld\n", serial_sum);
+    printf("Parallel boundary sum: %lld\n", parallel_sum);
+
+    printf("Correctness: %s\n",
+           (serial_sum == parallel_sum) ? "YES" : "NO");
+
+    printf("Serial time: %f seconds\n", serial_time);
+    printf("Parallel time: %f seconds\n", parallel_time);
+
+    if (parallel_time > 0)
+        printf("Speedup: %f\n", serial_time / parallel_time);
+
+    return 0;
+}
+//----------------
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <omp.h>
+
+#define MAX 1000
+
+// Adjacency list
+int adj[MAX][MAX];
+int degree[MAX];
+
+// Read graph from file
+int read_graph(char filename[], int *n) {
+
+    FILE *fp = fopen(filename, "r");
+
+    if (fp == NULL) {
+        printf("Cannot open input file!\n");
+        return 0;
+    }
+
+    int edges;
+    fscanf(fp, "%d %d", n, &edges);
+
+    for (int i = 0; i < edges; i++) {
+
+        int u, v;
+        fscanf(fp, "%d %d", &u, &v);
+
+        adj[u][degree[u]++] = v;
+        adj[v][degree[v]++] = u;
+    }
+
+    fclose(fp);
+    return 1;
+}
+
+// Serial BFS
+void serial_bfs(int n, int source, int dist[]) {
+
+    int visited[MAX] = {0};
+    int queue[MAX];
+
+    int front = 0, rear = 0;
+
+    for (int i = 0; i < n; i++)
+        dist[i] = -1;
+
+    visited[source] = 1;
+    dist[source] = 0;
+
+    queue[rear++] = source;
+
+    while (front < rear) {
+
+        int u = queue[front++];
+
+        for (int i = 0; i < degree[u]; i++) {
+
+            int v = adj[u][i];
+
+            if (!visited[v]) {
+
+                visited[v] = 1;
+                dist[v] = dist[u] + 1;
+
+                queue[rear++] = v;
+            }
+        }
+    }
+}
+
+// Parallel BFS
+void parallel_bfs(int n, int source, int dist[], int threads) {
+
+    int visited[MAX] = {0};
+
+    int frontier[MAX];
+    int next_frontier[MAX];
+
+    int count = 1;
+
+    for (int i = 0; i < n; i++)
+        dist[i] = -1;
+
+    visited[source] = 1;
+    dist[source] = 0;
+
+    frontier[0] = source;
+
+    omp_set_num_threads(threads);
+
+    while (count > 0) {
+
+        int next_count = 0;
+
+        #pragma omp parallel for
+        for (int i = 0; i < count; i++) {
+
+            int u = frontier[i];
+
+            for (int j = 0; j < degree[u]; j++) {
+
+                int v = adj[u][j];
+                int discovered = 0;
+
+                // Safely check and mark visited
+                #pragma omp critical
+                {
+                    if (!visited[v]) {
+                        visited[v] = 1;
+                        discovered = 1;
+                    }
+                }
+
+                if (discovered) {
+
+                    dist[v] = dist[u] + 1;
+
+                    int position;
+
+                    // Get a unique position
+                    #pragma omp atomic capture
+                    position = next_count++;
+
+                    next_frontier[position] = v;
+                }
+            }
+        }
+
+        // Move to next BFS level
+        count = next_count;
+
+        for (int i = 0; i < count; i++)
+            frontier[i] = next_frontier[i];
+    }
+}
+
+// Compare serial and parallel results
+int compare_results(int n, int serial[], int parallel[]) {
+
+    for (int i = 0; i < n; i++) {
+
+        if (serial[i] != parallel[i])
+            return 0;
+    }
+
+    return 1;
+}
+
+// Print BFS distances
+void print_results(int n, int dist[]) {
+
+    printf("\nVertex\tDistance\n");
+
+    for (int i = 0; i < n; i++) {
+        printf("%d\t%d\n", i, dist[i]);
+    }
+}
+
+int main() {
+
+    int n, source, threads;
+
+    int serial_dist[MAX];
+    int parallel_dist[MAX];
+
+    char filename[100];
+
+    printf("Enter input filename: ");
+    scanf("%99s", filename);
+
+    if (!read_graph(filename, &n))
+        return 1;
+
+    printf("Enter source vertex: ");
+    scanf("%d", &source);
+
+    printf("Enter number of threads: ");
+    scanf("%d", &threads);
+
+    if (source < 0 || source >= n || threads < 1) {
+        printf("Invalid source or thread count!\n");
+        return 1;
+    }
+
+    // Serial BFS
+    double start = omp_get_wtime();
+
+    serial_bfs(n, source, serial_dist);
+
+    double serial_time = omp_get_wtime() - start;
+
+    // Parallel BFS
+    start = omp_get_wtime();
+
+    parallel_bfs(n, source, parallel_dist, threads);
+
+    double parallel_time = omp_get_wtime() - start;
+
+    // Results
+    printf("\n--- SERIAL BFS ---\n");
+    print_results(n, serial_dist);
+
+    printf("\n--- PARALLEL BFS ---\n");
+    print_results(n, parallel_dist);
+
+    printf("\nCorrectness: %s\n",
+           compare_results(n, serial_dist, parallel_dist)
+           ? "YES" : "NO");
+
+    printf("Serial time: %f seconds\n", serial_time);
+    printf("Parallel time: %f seconds\n", parallel_time);
+
+    if (parallel_time > 0)
+        printf("Speedup: %f\n", serial_time / parallel_time);
+
+    return 0;
+}
+
+
+
